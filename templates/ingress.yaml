@@ -1,0 +1,36 @@
+{{- if and .Values.ingress.enabled (eq .Values.ingress.type "standard") }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openpanel-ingress
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: openpanel
+    component: ingress
+  annotations:
+{{ toYaml .Values.ingress.standard.annotations | indent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.standard.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.fqdn }}
+      secretName: {{ .Values.ingress.standard.tlsSecretName }}
+  rules:
+    - host: {{ .Values.ingress.fqdn }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.api.service.name }}
+                port:
+                  number: {{ .Values.api.service.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.dashboard.service.name }}
+                port:
+                  number: {{ .Values.dashboard.service.port }}
+{{- end }}

@@ -1,0 +1,174 @@
+{{- if .Values.clickhouse.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: op-ch
+    component: clickhouse
+data:
+  op-config.xml: |
+    <clickhouse>
+        <logger>
+            <level>warning</level>
+            <console>true</console>
+        </logger>
+        
+        <keep_alive_timeout>10</keep_alive_timeout>
+        
+        <!-- Stop all the unnecessary logging -->
+        <query_thread_log remove="remove"/>
+        <query_log remove="remove"/>
+        <text_log remove="remove"/>
+        <trace_log remove="remove"/>
+        <metric_log remove="remove"/>
+        <asynchronous_metric_log remove="remove"/>
+        <session_log remove="remove"/>
+        <part_log remove="remove"/>
+
+        <listen_host>0.0.0.0</listen_host>
+        <interserver_listen_host>0.0.0.0</interserver_listen_host>
+        <interserver_http_host>{{ .Values.clickhouse.service.name }}</interserver_http_host>
+
+        <!-- Not used anymore, but kept for backwards compatibility -->
+        <macros>
+            <shard>1</shard>
+            <replica>replica1</replica>
+            <cluster>openpanel_cluster</cluster>
+        </macros>
+    </clickhouse>
+  op-user-config.xml: |
+    <clickhouse>
+        <users>
+            <default>
+                <password></password>
+                <networks>
+                    <ip>::/0</ip>
+                </networks>
+                <profile>default</profile>
+                <quota>default</quota>
+            </default>
+        </users>
+    </clickhouse>
+  init-db.sh: |
+    #!/bin/bash
+    set -e
+    clickhouse client -n <<-EOSQL
+        CREATE DATABASE IF NOT EXISTS {{ .Values.clickhouse.database }};
+    EOSQL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.clickhouse.service.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: op-ch
+    component: clickhouse
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.clickhouse.service.httpPort }}
+      targetPort: {{ .Values.clickhouse.service.httpPort }}
+      name: http
+    - port: {{ .Values.clickhouse.service.nativePort }}
+      targetPort: {{ .Values.clickhouse.service.nativePort }}
+      name: native
+  selector:
+    app: op-ch
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.clickhouse.service.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: op-ch
+    component: clickhouse
+spec:
+  serviceName: {{ .Values.clickhouse.service.name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: op-ch
+  template:
+    metadata:
+      labels:
+        app: op-ch
+    spec:
+      containers:
+        - name: clickhouse
+          image: {{ .Values.clickhouse.image.repository }}:{{ .Values.clickhouse.image.tag }}
+          ports:
+            - containerPort: {{ .Values.clickhouse.service.httpPort }}
+              name: http
+            - containerPort: {{ .Values.clickhouse.service.nativePort }}
+              name: native
+          volumeMounts:
+            - name: clickhouse-data
+              mountPath: /var/lib/clickhouse
+            - name: clickhouse-logs
+              mountPath: /var/log/clickhouse-server
+            - name: clickhouse-config
+              mountPath: /etc/clickhouse-server/config.d/op-config.xml
+              subPath: op-config.xml
+            - name: clickhouse-config
+              mountPath: /etc/clickhouse-server/users.d/op-user-config.xml
+              subPath: op-user-config.xml
+            - name: clickhouse-init
+              mountPath: /docker-entrypoint-initdb.d/init-db.sh
+              subPath: init-db.sh
+          env:
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.database | quote }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - clickhouse-client --query "SELECT 1"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - clickhouse-client --query "SELECT 1"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+{{ toYaml .Values.clickhouse.resources | indent 12 }}
+      volumes:
+        - name: clickhouse-config
+          configMap:
+            name: clickhouse-config
+        - name: clickhouse-init
+          configMap:
+            name: clickhouse-config
+            defaultMode: 0755
+{{- if .Values.clickhouse.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: clickhouse-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.clickhouse.persistence.storageClass }}
+        storageClassName: {{ .Values.clickhouse.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.clickhouse.persistence.dataSize }}
+    - metadata:
+        name: clickhouse-logs
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.clickhouse.persistence.storageClass }}
+        storageClassName: {{ .Values.clickhouse.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.clickhouse.persistence.logsSize }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,117 @@
+{{- if .Values.dashboard.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.dashboard.service.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: op-dashboard
+    component: dashboard
+spec:
+  type: {{ .Values.dashboard.service.type }}
+  ports:
+    - port: {{ .Values.dashboard.service.port }}
+      targetPort: {{ .Values.dashboard.service.port }}
+      name: http
+  selector:
+    app: op-dashboard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.dashboard.service.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: op-dashboard
+    component: dashboard
+spec:
+  replicas: {{ .Values.dashboard.replicas }}
+  selector:
+    matchLabels:
+      app: op-dashboard
+  template:
+    metadata:
+      labels:
+        app: op-dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: {{ .Values.dashboard.image.repository }}:{{ .Values.dashboard.image.tag }}
+          ports:
+            - containerPort: {{ .Values.dashboard.service.port }}
+              name: http
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: openpanel-config
+                  key: NODE_ENV
+            - name: SELF_HOSTED
+              valueFrom:
+                configMapKeyRef:
+                  name: openpanel-config
+                  key: SELF_HOSTED
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openpanel-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openpanel-secrets
+                  key: REDIS_URL
+            - name: CLICKHOUSE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openpanel-secrets
+                  key: CLICKHOUSE_URL
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openpanel-config
+                  key: API_URL
+            - name: DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openpanel-config
+                  key: DASHBOARD_URL
+            - name: NEXT_PUBLIC_DASHBOARD_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openpanel-config
+                  key: DASHBOARD_URL
+            - name: NEXT_PUBLIC_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: openpanel-config
+                  key: API_URL
+          livenessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: {{ .Values.dashboard.service.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: {{ .Values.dashboard.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+{{ toYaml .Values.dashboard.resources | indent 12 }}
+      initContainers:
+        - name: wait-for-api
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until wget -q -O- http://{{ .Values.api.service.name }}:{{ .Values.api.service.port }}/healthcheck; do
+                echo "Waiting for API..."
+                sleep 2
+              done
+              echo "API is ready!"
+{{- end }}

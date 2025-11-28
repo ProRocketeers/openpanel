@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openpanel-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: openpanel
+    component: config
+data:
+  # Domain configuration
+  API_URL: {{ .Values.config.apiUrl | quote }}
+  DASHBOARD_URL: {{ .Values.config.dashboardUrl | quote }}
+
+  # Application settings
+  NODE_ENV: {{ .Values.config.nodeEnv | quote }}
+  SELF_HOSTED: {{ .Values.config.selfHosted | quote }}
+
+  # Registration settings
+  ALLOW_REGISTRATION: {{ .Values.config.allowRegistration | quote }}
+  ALLOW_INVITATION: {{ .Values.config.allowInvitation | quote }}
+
+  # Optional: AI features
+{{- if .Values.config.aiModel }}
+  AI_MODEL: {{ .Values.config.aiModel | quote }}
+{{- end }}
+
+  # OAuth redirect URIs
+{{- if .Values.config.googleRedirectUri }}
+  GOOGLE_REDIRECT_URI: {{ .Values.config.googleRedirectUri | quote }}
+{{- end }}

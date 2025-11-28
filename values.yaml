@@ -1,0 +1,210 @@
+# Default values for openpanel
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  namespace: openpanel
+
+# PostgreSQL Configuration
+# Set postgresql.enabled=true to deploy PostgreSQL in Kubernetes
+# Set postgresql.enabled=false to use external PostgreSQL
+postgresql:
+  enabled: false  # Set to true for self-hosted PostgreSQL
+  image:
+    repository: postgres
+    tag: "14-alpine"
+  user: postgres
+  password: postgres  # Change this in production!
+  database: postgres
+  service:
+    name: op-db
+    port: 5432
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""  # Use default storage class
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+# External PostgreSQL Configuration (when postgresql.enabled=false)
+externalPostgresql:
+  host: "<postgres_host>"
+  port: 5432
+  user: "<postgres_user>"
+  password: "<postgres_password>"  # Change this!
+  database: "<database_name>"
+  schema: public
+
+# Redis Configuration
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2.5-alpine"
+  service:
+    name: op-kv
+    port: 6379
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# External Redis Configuration (when redis.enabled=false)
+externalRedis:
+  host: "redis.example.com"
+  port: 6379
+
+# ClickHouse Configuration
+clickhouse:
+  enabled: true
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: "24.3.2-alpine"
+  service:
+    name: op-ch
+    httpPort: 8123
+    nativePort: 9000
+  database: openpanel
+  persistence:
+    enabled: true
+    dataSize: 50Gi
+    logsSize: 10Gi
+    storageClass: ""
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+
+# External ClickHouse Configuration (when clickhouse.enabled=false)
+externalClickhouse:
+  host: "clickhouse.example.com"
+  port: 8123
+  database: openpanel
+
+# API Configuration
+api:
+  enabled: true
+  image:
+    repository: lindesvard/openpanel-api
+    tag: latest
+  service:
+    name: op-api
+    type: ClusterIP
+    port: 3000
+  replicas: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+# Dashboard Configuration
+dashboard:
+  enabled: true
+  image:
+    repository: lindesvard/openpanel-dashboard
+    tag: latest
+  service:
+    name: op-dashboard
+    type: ClusterIP
+    port: 3000
+  replicas: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+# Worker Configuration
+worker:
+  enabled: true
+  image:
+    repository: lindesvard/openpanel-worker
+    tag: latest
+  service:
+    name: op-worker
+    type: ClusterIP
+    port: 3000
+  replicas: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+# Application Configuration
+config:
+  # Domain configuration
+  apiUrl: "https://<fqdn>/api"
+  dashboardUrl: "https://<fqdn>"
+  
+  # Application settings
+  nodeEnv: "production"
+  selfHosted: "true"
+  
+  # Registration settings
+  allowRegistration: "true"
+  allowInvitation: "true"
+  
+  # Optional: AI features
+  aiModel: "gpt-4o-mini"  # Options: gpt-4o, gpt-4o-mini, claude-3-5
+  
+  # OAuth redirect URIs
+  googleRedirectUri: "https://<fqdn>/api/oauth/google/callback"
+
+# Secrets Configuration
+secrets:
+  # REQUIRED: Generate with: openssl rand -base64 32
+  cookieSecret: "CHANGE_ME_GENERATE_A_RANDOM_32_CHAR_STRING"
+  
+  # Email configuration (optional)
+  resendApiKey: "<resend_api_key>"
+  emailSender: "<email_sender>"
+  
+  # AI features (optional)
+  openaiApiKey: "<openai_api_key>"
+  anthropicApiKey: "<anthropic_api_key>"
+  
+  # Google OAuth (optional)
+  googleClientId: "<google_client_id>"
+  googleClientSecret: "<google_client_secret>"
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  type: httpproxy  # Options: httpproxy, standard
+  fqdn: <fqdn> # Common FQDN for both ingress types
+  
+  # For HTTPProxy (Contour)
+  httpproxy:
+    tlsSecretName: <tls_secret_name>
+  
+  # For standard Ingress (nginx, traefik, etc.)
+  standard:
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    tlsSecretName: <tls_secret_name>

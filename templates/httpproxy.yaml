@@ -1,0 +1,32 @@
+{{- if and .Values.ingress.enabled (eq .Values.ingress.type "httpproxy") }}
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: openpanel-httpproxy
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: openpanel
+    component: ingress
+spec:
+  virtualhost:
+    fqdn: {{ .Values.ingress.fqdn }}
+    tls:
+      secretName: {{ .Values.ingress.httpproxy.tlsSecretName }}
+
+  routes:
+  - conditions:
+    - prefix: /api
+    services:
+    - name: {{ .Values.api.service.name }}
+      port: {{ .Values.api.service.port }}
+    pathRewritePolicy:
+      replacePrefix:
+      - prefix: /api
+        replacement: /
+  
+  - conditions:
+    - prefix: /
+    services:
+    - name: {{ .Values.dashboard.service.name }}
+      port: {{ .Values.dashboard.service.port }}
+{{- end }}

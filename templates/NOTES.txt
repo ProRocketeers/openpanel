@@ -1,0 +1,35 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- if eq .Values.ingress.type "httpproxy" }}
+  HTTPProxy is configured for: {{ .Values.ingress.fqdn }}
+{{- else }}
+  Ingress is configured for: {{ .Values.ingress.fqdn }}
+{{- end }}
+{{- else }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Values.global.namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ .Values.dashboard.service.name }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Values.global.namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- end }}
+
+2. Check the status of your deployment:
+  kubectl get pods --namespace {{ .Values.global.namespace }}
+
+3. View logs:
+  kubectl logs -f deployment/{{ .Values.api.service.name }} --namespace {{ .Values.global.namespace }}
+  kubectl logs -f deployment/{{ .Values.dashboard.service.name }} --namespace {{ .Values.global.namespace }}
+  kubectl logs -f deployment/{{ .Values.worker.service.name }} --namespace {{ .Values.global.namespace }}
+
+4. PostgreSQL Configuration:
+{{- if .Values.postgresql.enabled }}
+  ✓ Self-hosted PostgreSQL is enabled
+  Database service: {{ .Values.postgresql.service.name }}:{{ .Values.postgresql.service.port }}
+{{- else }}
+  ✓ External PostgreSQL is configured
+  Host: {{ .Values.externalPostgresql.host }}:{{ .Values.externalPostgresql.port }}
+  Database: {{ .Values.externalPostgresql.database }}
+{{- end }}
+
+5. Important: Make sure to update the secrets in values.yaml:
+  - COOKIE_SECRET (generate with: openssl rand -base64 32)
+  - Database passwords
+  - API keys (if using email, AI features, or OAuth)
