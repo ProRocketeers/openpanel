@@ -76,6 +76,8 @@ spec:
                 configMapKeyRef:
                   name: openpanel-config
                   key: API_URL
+            - name: WORKER_PORT
+              value: {{ .Values.worker.service.port | quote }}
           livenessProbe:
             httpGet:
               path: /healthcheck
