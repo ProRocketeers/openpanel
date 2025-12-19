@@ -22,7 +22,7 @@ spec:
     - host: {{ .Values.ingress.fqdn }}
       http:
         paths:
-            path: /api(/|$)(.*)
+          - path: /api(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
