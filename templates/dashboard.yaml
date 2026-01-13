@@ -24,6 +24,7 @@ metadata:
   labels:
     app: op-dashboard
     component: dashboard
+    name: op-dashboard
 spec:
   replicas: {{ .Values.dashboard.replicas }}
   selector:
