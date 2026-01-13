@@ -29,6 +29,7 @@ spec:
   selector:
     matchLabels:
       app: op-dashboard
+      name: op-dashboard
   template:
     metadata:
       labels:
