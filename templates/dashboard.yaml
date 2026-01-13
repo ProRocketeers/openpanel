@@ -15,7 +15,6 @@ spec:
       name: http
   selector:
     app: op-dashboard
-    name: op-dashboard
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -25,13 +24,11 @@ metadata:
   labels:
     app: op-dashboard
     component: dashboard
-    name: op-dashboard
 spec:
   replicas: {{ .Values.dashboard.replicas }}
   selector:
     matchLabels:
       app: op-dashboard
-      name: op-dashboard
   template:
     metadata:
       labels:
