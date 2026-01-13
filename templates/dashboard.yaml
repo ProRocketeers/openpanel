@@ -15,6 +15,7 @@ spec:
       name: http
   selector:
     app: op-dashboard
+    name: op-dashboard
 ---
 apiVersion: apps/v1
 kind: Deployment
