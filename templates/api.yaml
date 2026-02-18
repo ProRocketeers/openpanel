@@ -34,9 +34,13 @@ spec:
       labels:
         app: op-api
     spec:
+{{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.global.imagePullSecrets | indent 8 }}
+{{- end }}
       containers:
         - name: api
-          image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}
+          image: {{ if .Values.global.registry }}{{ .Values.global.registry }}/{{ end }}{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}
           ports:
             - containerPort: {{ .Values.api.service.port }}
               name: http
@@ -178,7 +182,7 @@ spec:
             httpGet:
               path: /healthcheck
               port: {{ .Values.api.service.port }}
-            initialDelaySeconds: 600
+            initialDelaySeconds: 180
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
@@ -186,7 +190,7 @@ spec:
             httpGet:
               path: /healthcheck
               port: {{ .Values.api.service.port }}
-            initialDelaySeconds: 600
+            initialDelaySeconds: 180
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
